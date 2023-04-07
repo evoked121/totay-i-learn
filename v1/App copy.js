@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import supabase from "./supabase";
+import supabase from "../src/supabase";
 import "./style.css";
-//new comment
+
 const CATEGORIES = [
   { name: "technology", color: "#3b82f6" },
   { name: "science", color: "#16a34a" },
@@ -61,24 +61,15 @@ function Counter() {
 
 function App() {
   const [showForm, setShowForm] = useState(false);
-  const [facts, setFacts] = useState([]);
-  const [currentCategory, setCurrentCategory] = useState("all");
+  const [facts, setFacts] = useState(initialFacts);
 
-  useEffect(
-    function () {
-      async function getFacts() {
-        let query = supabase.from("facts").select("*");
-        if (currentCategory !== "all") {
-          query = query.eq("category", currentCategory);
-        }
-        const { data: facts, error } = await query;
-        if (!error) setFacts(facts);
-        else alert("There was a problem");
-      }
-      getFacts();
-    },
-    [currentCategory]
-  );
+  useEffect(function () {
+    async function getFacts() {
+      const { data: facts, error } = await supabase.from("facts").select("*");
+      console.log(facts);
+    }
+    getFacts();
+  }, []);
 
   return (
     <>
@@ -89,7 +80,7 @@ function App() {
       ) : null}
 
       <main className="main">
-        <CategoryFilter setCurrentCategory={setCurrentCategory} />
+        <CategoryFilter />
         <FactList facts={facts} />
       </main>
     </>
@@ -119,24 +110,33 @@ function NewFactForm({ setFacts, setShowForm }) {
   const [category, setCategory] = useState("");
   const textLength = text.length;
 
-  async function handleSubmit(e) {
+  function handleSubmit(e) {
     e.preventDefault();
     //if the date is valid. If so, creat a new fact
-    const { data: newFact, error } = await supabase
-      .from("facts")
-      .insert([{ text, source, category }])
-      .select();
+    if (text && source && category && textLength <= 200) {
+      //creat a new fact object
+      const newFact = {
+        id: Math.round(Math.random() * 10000000),
+        text,
+        source,
+        category,
+        votesInteresting: 0,
+        votesMindblowing: 0,
+        votesFalse: 0,
+        createdIn: new Date().getFullYear(),
+      };
 
-    //add new fact to UI. add to state
-    setFacts((facts) => [newFact[0], ...facts]);
+      //add new fact to UI. add to state
+      setFacts((facts) => [newFact, ...facts]);
 
-    //reset the input field
-    setText("");
-    setSource("");
-    setCategory("");
+      //reset the input field
+      setText("");
+      setSource("");
+      setCategory("");
 
-    //close the entire form
-    setShowForm(false);
+      //close the entire form
+      setShowForm(false);
+    }
   }
 
   return (
@@ -167,24 +167,18 @@ function NewFactForm({ setFacts, setShowForm }) {
   );
 }
 
-function CategoryFilter({ setCurrentCategory }) {
+function CategoryFilter() {
   return (
     <aside>
       <ul>
         <li className="category">
-          <button
-            className="btn btn-all-categories"
-            onClick={() => setCurrentCategory("all")}
-          >
-            All
-          </button>
+          <button className="btn btn-all-categories">All</button>
         </li>
         {CATEGORIES.map((cat) => (
           <li key={cat.name} className="category">
             <button
               className="btn btn-category"
               style={{ backgroundColor: cat.color }}
-              onClick={() => setCurrentCategory(cat.name)}
             >
               {cat.name}
             </button>
@@ -196,9 +190,6 @@ function CategoryFilter({ setCurrentCategory }) {
 }
 
 function FactList({ facts }) {
-  if (facts.length === 0) {
-    return <p className="message">No facts for this category yet!</p>;
-  }
   return (
     <section>
       <ul className="facts-list">
@@ -226,7 +217,7 @@ function Fact({ fact }) {
             .color,
         }}
       >
-        {fact.category}
+        #technology#
       </span>
       <div className="vote-buttons">
         <button>👍 {fact.votesInteresting}</button>
